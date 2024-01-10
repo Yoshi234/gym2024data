@@ -1,5 +1,6 @@
 import pandas as pd  
 import numpy as np 
+from features import fixes
 
 def concat_names(first, last):
     return "{} {}".format(first, last)
@@ -46,5 +47,28 @@ def main():
     print(df["Date"].unique())
     df.to_csv("../processed_data/{}_1.csv".format(data_file), index=False)
 
-if __name__ == "__main__":
+    # after fixing the default data sets, merge them together into a single file
     merge_data()
+
+def fix_tokyo_dates():
+    data_file = "data_2017_2021"
+    file_name = "../../../cleandata/{}.csv".format(data_file)
+    df = pd.read_csv(file_name)
+    df["Format Competition"] = "July-2021 Olympic Games Japan"
+    df = fix_names(df)
+    df.to_csv("../processed_data/{}_1.csv".format(data_file), index=False)
+    merge_data()
+
+def fix_dupl_names():
+    data_file = "all_data"
+    file_name = "../processed_data/{}.csv".format(data_file)
+    df = pd.read_csv(file_name)
+    
+    for name_set in fixes:
+        for unique_name in list(df["Competitor"].unique()):
+            if unique_name in name_set: df.loc[df["Competitor"] == unique_name, "Competitor"] = fixes[name_set]
+    df.to_csv("../processed_data/{}.csv".format(data_file), index=False)
+
+if __name__ == "__main__":
+    # print("Please set the function desired to run in the file")
+    fix_dupl_names()
