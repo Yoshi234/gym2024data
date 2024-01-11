@@ -1,6 +1,7 @@
 import pandas as pd  
 import numpy as np 
 from names_cleaning import fixes
+from datetime import datetime
 
 def concat_names(first, last):
     return "{} {}".format(first, last)
@@ -11,6 +12,43 @@ def fix_names(df):
     df["FirstName"] = df["FirstName"].str.lower()
     df["Competitor"] = df.apply(lambda x: concat_names(x["FirstName"], x["LastName"]), axis=1)
     return df
+
+class ranked_date: 
+    def __init__(self, og_date, date_val:datetime):
+        self.og_date = og_date
+        self.date_val = date_val
+        self.rank = None
+
+    def __str__(self):
+        return f"{self.datetime} - rank => {self.rank}"
+
+def rank_dates(comp_data):
+    raw_dates = list(comp_data["DateTime"].unique())
+    dates_ranked = [ranked_date(date, datetime.strptime(date, "%Y-%m-%d")) for date in raw_dates]
+    dates_ranked = sorted(dates_ranked, key=lambda rank_date: rank_date.date_val)
+    for i in range(len(dates_ranked)): dates_ranked[i].rank = i
+
+    comp_data["DateRank"] = np.nan
+    for i in dates_ranked:
+        comp_data.loc[comp_data["DateTime"] == i.og_date, "DateRank"] = i.rank
+    return comp_data
+
+class comp_date:
+    def __init__(self, date_rank, name):
+        self.name = name
+        self.date_rank = date_rank
+        self.new_rank = None
+
+def indiv_rank_dates(comp_data):
+    for competitor in list(comp_data["Competitor"].unique()):
+        small_df = comp_data.loc[comp_data["Competitor"] == competitor]
+        date_ranks = list(small_df["DateRank"].unique())
+        date_ranks = [comp_date(date_rank, competitor) for date_rank in date_ranks]
+        dates_ranked = sorted(date_ranks, key=lambda comp_date_rank: comp_date_rank.date_rank)
+        for i in range(len(dates_ranked)): 
+            dates_ranked[i].new_rank = i
+            comp_data.loc[(comp_data["Competitor"] == competitor) & (comp_data["DateRank"] == dates_ranked[i].date_rank), "IndividualDateRank"] = dates_ranked[i].new_rank
+    return comp_data
 
 class unique_date:
     def __init__(self, date, split_date):
@@ -124,6 +162,10 @@ def main():
     df1 = fix_names(df1)
     df2 = fix_names(df2)
 
+    # rank the dates
+    df1 = rank_dates(df1)
+    df2 = rank_dates(df2)
+
     # save the data
     df1.to_csv("../processed_data/{}_1.csv".format(data_file_1), index=False)
     df2.to_csv("../processed_data/{}_1.csv".format(data_file_2), index=False)
@@ -131,7 +173,11 @@ def main():
     # merge the datasets together
     merge_data()
     # fix duplicate naming issues
-    fix_dupl_names() 
+    df3 = fix_dupl_names() 
+    df3 = indiv_rank_dates(df3)
+
+    df3.to_csv("../processed_data/all_data.csv", index=False)
+
 
 def fix_tokyo_dates(df):
     # only use on the japan olympics data set
@@ -148,6 +194,7 @@ def fix_dupl_names():
         for unique_name in list(df["Competitor"].unique()):
             if unique_name in name_set: df.loc[df["Competitor"] == unique_name, "Competitor"] = fixes[name_set]
     df.to_csv("../processed_data/{}.csv".format(data_file), index=False)
+    return df
 
 if __name__ == "__main__":
     # print("Please set the function desired to run in the file")
