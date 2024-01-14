@@ -47,7 +47,7 @@ def indiv_rank_dates(comp_data):
         dates_ranked = sorted(date_ranks, key=lambda comp_date_rank: comp_date_rank.date_rank)
         for i in range(len(dates_ranked)): 
             dates_ranked[i].new_rank = i
-            comp_data.loc[(comp_data["Competitor"] == competitor) & (comp_data["DateRank"] == dates_ranked[i].date_rank), "IndividualDateRank"] = dates_ranked[i].new_rank
+            comp_data.loc[(comp_data["Competitor"] == competitor) & (comp_data["DateRank"] == dates_ranked[i].date_rank), "IndividualDateRank"] = dates_ranked[i].new_rank + 1
     return comp_data
 
 class unique_date:
