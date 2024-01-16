@@ -1,0 +1,3 @@
+generating teams
+reading from modeling/pretrained/r6_mod.pkl
+running women sim

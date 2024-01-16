@@ -50,7 +50,7 @@ def preprocess_help(data):
     ])
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy="constant", fill_value="not available")), 
-        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse=False))
+        ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
     ])
 
     categorical_columns = data.select_dtypes(include=["object", "category"]).columns
@@ -83,14 +83,15 @@ def preprocess_train(data: pd.DataFrame):
     will just make it so that the 
 
     Returns a tuple of 8 datasets - the datasets needed for training 4 separate models
-    - x1 --- excludes D_Score, E_Score, Penalty, and Rank - used to predict D_Score
-    - x2 --- excludes E_Score, Penalty, and Rank - used to predict E_Score
-    - x3 --- excludes Penalty and Rank - used to predict Penalty
-    - x4 --- excludes Rank - used to predict Rank
+    - x1 --- excludes D_Score, E_Score, Penalty, total score, and Rank - used to predict D_Score
+    - x2 --- excludes E_Score, Penalty, total score, and Rank - used to predict E_Score
+    - x3 --- excludes Penalty, Rank, and total score - used to predict Penalty
+    - x4 --- excludes Rank and total score- used to predict Rank or total score
     - y1 --- D_Score labels
     - y2 --- E_Score labels
     - y3 --- Penalty labels
     - y4 --- Rank labels
+    - y5 --- Total score labels
     '''
     full_dat = data.drop(["Format Competition", "DateTime", "Location", "LastName", "FirstName", "Date", "DateRank"], axis=1)
     preprocessor = preprocess_help(full_dat)
@@ -99,30 +100,37 @@ def preprocess_train(data: pd.DataFrame):
     ])
     pipe1.set_output(transform="pandas")
     proc_dat = pipe1.fit_transform(full_dat)
+    proc_dat = proc_dat.dropna()
 
     # debug statement --- print(proc_dat.columns)
     # training data for fitting model to difficulty score
-    X1 = proc_dat.drop(["norm_numeric__D_Score", "norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
+    X1 = proc_dat.drop(["norm_numeric__Score", "norm_numeric__D_Score", "norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
     # training data for fitting model to estimate execution score
-    X2 = proc_dat.drop(["norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
+    X2 = proc_dat.drop(["norm_numeric__Score", "norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
     # training data for fitting model to predict penalty
-    X3 = proc_dat.drop(["norm_numeric__Penalty", "logmax__Rank"], axis=1)
+    X3 = proc_dat.drop(["norm_numeric__Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
     # training data for fitting model to predict rank
-    X4 = proc_dat.drop(["logmax__Rank"], axis=1)
+    X4 = proc_dat.drop(["norm_numeric__Score", "logmax__Rank"], axis=1)
 
     Y1 = proc_dat["norm_numeric__D_Score"]
     Y2 = proc_dat["norm_numeric__E_Score"]
     Y3 = proc_dat["norm_numeric__Penalty"] 
+    # final fit features (1)
     Y4 = proc_dat["logmax__Rank"]
+    # final fit features (2)
+    Y5 = proc_dat["norm_numeric__Score"]
 
-    return X1, X2, X3, X4, Y1, Y2, Y3, Y4
+    return X1, X2, X3, X4, Y1, Y2, Y3, Y4, Y5
 
-def preprocess_predict(data: pd.DataFrame):
+def preprocess_predict(data: pd.DataFrame, response_feature="logmax__Rank"):
     '''
     Args:
     - data --- takes as input a pandas dataframe 
     and outputs the preprocessed dataframes of interest for 
     model validation / prediction steps
+    - response_feature --- takes as input a string, determining the y-label
+    to output for feature classification. The default is 'logmax__Rank', 
+    but 'norm_numeric__Score' can also be used for this purpose.
 
     Returns: 
     - x, y --- preprocessed data frames for model validation
@@ -142,10 +150,21 @@ def preprocess_predict(data: pd.DataFrame):
     pipe1.set_output(transform="pandas")
     proc_dat = pipe1.fit_transform(full_dat)
 
-    x = proc_dat.drop(["norm_numeric__D_Score", "norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank"], axis=1)
-    y = proc_dat["logmax__Rank"]
+    x = proc_dat.drop(["norm_numeric__D_Score", "norm_numeric__E_Score", "norm_numeric__Penalty", "logmax__Rank", "norm_numeric__Score"], axis=1)
+    y = proc_dat[response_feature]
 
     return x, y
+
+def preprocess_sample(data: pd.DataFrame):
+    preprocessor = preprocess_help(data)
+    pipe1 = Pipeline(steps=[
+        ("preprocessor", preprocessor)
+    ])
+    pipe1.set_output(transform="pandas")
+    proc_dat = pipe1.fit_transform(data)
+
+    x = proc_dat
+    return x
 
 if __name__ == "__main__":
     data_file = "all_data"

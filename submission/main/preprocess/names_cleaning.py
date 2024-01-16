@@ -9,7 +9,8 @@ import numpy as np
 # fix list
 
 # GLOBAL VARIABLE
-fixes = {("alice d amato", "alice d'amato"): "alice d'amato", 
+fixes = {("li wen yeoh", "rachel yeoh li wen", "li wen rachel yeoh"): "li wen yeoh",
+         ("alice d amato", "alice d'amato"): "alice d'amato", 
          ("farah ann abdul hadi", "hadi abdul"): "farah ann abdul hadi", 
          ("elisa hämmerle", "elisa haemmerle"): "elisa hämmerle", 
          ("viktoriia listunova", "viktoria listunova"): "viktoria listunova", 
